@@ -261,7 +261,10 @@ public class PVPArenaPlaceholderExpansion extends PlaceholderExpansion {
                 }
                 return playerStatList.get(rowIndex);
             }
-        } catch (NullPointerException | NumberFormatException | IndexOutOfBoundsException e) {
+        } catch (IndexOutOfBoundsException e) {
+            Debugger.trace("Global stat index is out of bounds '{}'", phArgs.getIdentifier());
+            return "";
+        } catch (NullPointerException | NumberFormatException e) {
             Debugger.trace("Exception caught while parsing global stat placeholder '{}': {}", phArgs.getIdentifier(), e);
         }
         return null;
@@ -275,8 +278,11 @@ public class PVPArenaPlaceholderExpansion extends PlaceholderExpansion {
             } else {
                 return this.cache.getTeamsScore(phArgs).get(rowIndex);
             }
-        } catch (NullPointerException | NumberFormatException | IndexOutOfBoundsException e) {
-            Debugger.trace("Exception caught while parsing stat placeholder '{}': {}", phArgs.getIdentifier(), e);
+        } catch (IndexOutOfBoundsException e) {
+            Debugger.trace("Top score index is out of bounds '{}'", phArgs.getIdentifier());
+            return "";
+        } catch (NullPointerException | NumberFormatException e) {
+            Debugger.trace("Exception caught while parsing top score placeholder '{}': {}", phArgs.getIdentifier(), e);
         }
         return null;
     }

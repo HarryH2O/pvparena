@@ -106,7 +106,7 @@ public class PlaceholderMultilineCache {
                             });
                     this.cacheMap.put(scoreKey, scoreListCache);
                     this.cacheMap.put(playerKey, playerListCache);
-                    return this.cacheMap.get(accessKey);
+                    return this.cacheMap.getOrDefault(accessKey, emptyList());
                 });
     }
 
@@ -141,7 +141,7 @@ public class PlaceholderMultilineCache {
                             });
                     this.cacheMap.put(scoreKey, scoreListCache);
                     this.cacheMap.put(teamKey, teamListCache);
-                    return this.cacheMap.get(accessKey);
+                    return this.cacheMap.getOrDefault(accessKey, emptyList());
                 });
     }
 }
