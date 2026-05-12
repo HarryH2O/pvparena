@@ -27,6 +27,7 @@ import net.slipcor.pvparena.statistics.connector.MySqlConnector;
 import net.slipcor.pvparena.statistics.connector.SQLiteConnector;
 import net.slipcor.pvparena.updater.UpdateChecker;
 import org.bstats.bukkit.Metrics;
+import org.bstats.charts.DrilldownPie;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -42,11 +43,13 @@ import org.jetbrains.annotations.NotNull;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 
 import static java.util.Optional.ofNullable;
 import static net.slipcor.pvparena.config.Debugger.debug;
+import static net.slipcor.pvparena.core.VersionUtils.getApiVersion;
 
 /**
  * <pre>
@@ -333,6 +336,8 @@ public class PVPArena extends JavaPlugin {
         instance = this;
 
         Metrics metrics = new Metrics(this, BSTATS_PLUGIN_ID);
+        System.out.println("System.getProperty(\"java.version\") = " + System.getProperty("java.version"));
+        loadCustomCharts(metrics, this.getDescription().getVersion());
 
         if(Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null){
             new PVPArenaPlaceholderExpansion().register();
@@ -462,5 +467,23 @@ public class PVPArena extends JavaPlugin {
                 .filter(mod -> mod.hasPlayerWaitingForJoin(player))
                 .findAny()
                 .map(ArenaModule::getArena);
+    }
+
+    private static void loadCustomCharts(Metrics metrics, String pluginVersion) {
+        String javaVersionProperty = System.getProperty("java.version");
+        String javaVersion;
+        if (javaVersionProperty.startsWith("1.")) {
+            javaVersion = javaVersionProperty.split("\\.")[1];
+        } else {
+            javaVersion = javaVersionProperty.split("\\.")[0];
+        }
+
+        metrics.addCustomChart(new DrilldownPie("java_version_plugin", () ->
+                Map.of("Java %s".formatted(javaVersion), Map.of(pluginVersion, 1))
+        ));
+
+        metrics.addCustomChart(new DrilldownPie("server_version_plugin", () ->
+                Map.of(getApiVersion(), Map.of(pluginVersion, 1)))
+        );
     }
 }
