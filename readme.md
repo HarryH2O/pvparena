@@ -42,8 +42,8 @@ So take time to read the docs, it's full of useful information 😉
 
 ## Dependencies
 
-- Spigot 1.16.5+ (or derivatives like Paper, Purpur, Pufferfish, etc.)
-- Java 11+
+- Spigot 1.18.2+ (or derivatives like Paper, Purpur, Pufferfish, etc.)
+- Java 17+
 
 ***
 
