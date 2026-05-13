@@ -15,6 +15,7 @@
         <junit.version>5.11.4</junit.version>
         <assertj.version>3.26.3</assertj.version>
         <MockBukkit.version>2.85.2</MockBukkit.version>
+        <ormlite-jdbc.version>6.1</ormlite-jdbc.version>
     </properties>
 
     <repositories>
@@ -67,7 +68,8 @@
         <dependency>
             <groupId>com.j256.ormlite</groupId>
             <artifactId>ormlite-jdbc</artifactId>
-            <version>6.1</version>
+            <version>${ormlite-jdbc.version}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>me.clip</groupId>
@@ -169,7 +171,7 @@
                 <version>3.6.0</version>
                 <configuration>
                     <minimizeJar>true</minimizeJar>
-                    <createDependencyReducedPom>true</createDependencyReducedPom>
+                    <createDependencyReducedPom>false</createDependencyReducedPom>
                     <relocations>
                         <relocation>
                             <pattern>org.bstats</pattern>
