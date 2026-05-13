@@ -4,6 +4,7 @@ import net.slipcor.pvparena.PVPArena;
 import net.slipcor.pvparena.arena.Arena;
 import net.slipcor.pvparena.arena.ArenaPlayer;
 import net.slipcor.pvparena.arena.ArenaTeam;
+import net.slipcor.pvparena.arena.PlayerState;
 import net.slipcor.pvparena.arena.PlayerStatus;
 import net.slipcor.pvparena.classes.PABlock;
 import net.slipcor.pvparena.classes.PABlockLocation;
@@ -11,6 +12,7 @@ import net.slipcor.pvparena.classes.PADeathInfo;
 import net.slipcor.pvparena.classes.PASpawn;
 import net.slipcor.pvparena.commands.CommandTree;
 import net.slipcor.pvparena.commands.PAA_Region;
+import net.slipcor.pvparena.commands.PAG_Leave;
 import net.slipcor.pvparena.core.Config.CFG;
 import net.slipcor.pvparena.core.Language;
 import net.slipcor.pvparena.core.Language.MSG;
@@ -19,7 +21,9 @@ import net.slipcor.pvparena.events.goal.PAGoalEndEvent;
 import net.slipcor.pvparena.events.goal.PAGoalJailReleaseEvent;
 import net.slipcor.pvparena.events.goal.PAGoalPlayerDeathEvent;
 import net.slipcor.pvparena.loadables.ArenaGoal;
+import net.slipcor.pvparena.loadables.ArenaModule;
 import net.slipcor.pvparena.loadables.ArenaModuleManager;
+import net.slipcor.pvparena.loadables.ModuleType;
 import net.slipcor.pvparena.managers.InventoryManager;
 import net.slipcor.pvparena.managers.PermissionManager;
 import net.slipcor.pvparena.managers.SpawnManager;
@@ -39,11 +43,13 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.Vector;
 
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import static java.util.Collections.emptyList;
 import static java.util.Optional.ofNullable;
@@ -240,11 +246,12 @@ public class GoalLiberation extends ArenaGoal {
                 this.arena.msg(sender, MSG.ERROR_INVALID_ARGUMENT_COUNT, String.valueOf(args.length), "3");
             } else {
                 String teamName = args[2];
-                if (this.arena.getTeam(teamName) == null) {
+                ArenaTeam relatedTeam = this.arena.getTeam(teamName);
+                if (relatedTeam == null) {
                     this.arena.msg(sender, MSG.ERROR_TEAM_NOT_FOUND, args[1]);
                     return;
                 }
-                this.blockTeamName = teamName;
+                this.blockTeamName = relatedTeam.getName();
 
                 if("set".equalsIgnoreCase(args[1])) {
                     PAA_Region.activeSelections.put(sender.getName(), this.arena);
@@ -306,58 +313,27 @@ public class GoalLiberation extends ArenaGoal {
     @Override
     public void commitPlayerDeath(final ArenaPlayer arenaPlayer, final boolean doesRespawn, PADeathInfo deathInfo) {
         ArenaTeam arenaTeam = arenaPlayer.getArenaTeam();
-        Player player = arenaPlayer.getPlayer();
 
         if (!this.getTeamLifeMap().containsKey(arenaTeam)) {
             debug(arenaPlayer, "cmd: not in life map!");
             return;
         }
+
         final PAGoalPlayerDeathEvent gEvent = new PAGoalPlayerDeathEvent(this.arena, this, arenaPlayer, deathInfo, false);
         Bukkit.getPluginManager().callEvent(gEvent);
         int teamLives = this.getTeamLifeMap().get(arenaTeam);
         debug(arenaPlayer, "teamLives before death: {}", teamLives);
 
         if (teamLives <= 1) {
+            arenaPlayer.setMayDropInventory(true);
+            arenaPlayer.setMayRespawn(false);
+
             this.getTeamLifeMap().put(arenaTeam, 1);
 
             arenaPlayer.setStatus(PlayerStatus.DEAD);
 
-            final ArenaTeam team = arenaPlayer.getArenaTeam();
-
-            boolean someoneAlive = team.getTeamMembers().stream()
-                    .anyMatch(pl -> pl.getStatus() == PlayerStatus.FIGHT);
-
-            if (someoneAlive) {
-
-                if (this.arena.getConfig().getBoolean(CFG.USES_DEATHMESSAGES)) {
-                    this.broadcastSimpleDeathMessage(arenaPlayer, deathInfo);
-                }
-
-                if (this.arena.getConfig().getBoolean(CFG.PLAYER_DROPSINVENTORY)) {
-                    List<ItemStack> keptItems = InventoryManager.drop(player);
-                    this.keptItemsMap.put(player, keptItems);
-                }
-
-                player.getInventory().clear();
-
-                arenaPlayer.revive(deathInfo);
-                TeleportManager.teleportPlayerToRandomSpawn(this.arena, arenaPlayer, getPASpawnsStartingWith(this.arena, JAIL, team.getName()));
-
-                if (this.arena.getConfig().getBoolean(CFG.GOAL_LIBERATION_JAILED_SCOREBOARD)) {
-                    player.getScoreboard().getObjective("lives").getScore(arenaPlayer.getName()).setScore(101);
-                }
-            } else {
-                this.getTeamLifeMap().remove(arenaTeam);
-
-                arenaPlayer.setMayDropInventory(true);
-                arenaPlayer.setMayRespawn(true);
-                arenaPlayer.setStatus(PlayerStatus.LOST);
-
-                if (this.arena.getConfig().getBoolean(CFG.USES_DEATHMESSAGES)) {
-                    this.broadcastSimpleDeathMessage(arenaPlayer, deathInfo);
-                }
-
-                WorkflowManager.handleEnd(this.arena, false);
+            if (this.arena.getConfig().getBoolean(CFG.USES_DEATHMESSAGES)) {
+                this.broadcastSimpleDeathMessage(arenaPlayer, deathInfo);
             }
 
         } else {
@@ -370,6 +346,61 @@ public class GoalLiberation extends ArenaGoal {
 
             arenaPlayer.setMayDropInventory(true);
             arenaPlayer.setMayRespawn(true);
+        }
+    }
+
+    // Called after commitPlayerDeath() and inventory management in WorkflowManager.handlePlayerDeath()
+    @Override
+    public void parsePlayerDeath(ArenaPlayer arenaPlayer, PADeathInfo deathInfo) {
+        Player player = arenaPlayer.getPlayer();
+        ArenaTeam team = arenaPlayer.getArenaTeam();
+
+        boolean someoneAlive = team.getTeamMembers().stream()
+                .anyMatch(pl -> pl.getStatus() == PlayerStatus.FIGHT);
+
+        if (someoneAlive) {
+            // Player can still be freed => respawn them to jail
+            debug(arenaPlayer, "player is DEAD - teleporting them to jail");
+            InventoryManager.clearInventory(player);
+
+            arenaPlayer.revive(deathInfo);
+            Set<PASpawn> jailSpawns = getPASpawnsStartingWith(this.arena, JAIL, arenaPlayer.getArenaTeam().getName());
+            TeleportManager.teleportPlayerToRandomSpawn(this.arena, arenaPlayer, jailSpawns);
+
+            if (this.arena.getConfig().getBoolean(CFG.GOAL_LIBERATION_JAILED_SCOREBOARD)) {
+                player.getScoreboard().getObjective("lives").getScore(arenaPlayer.getName()).setScore(101);
+            }
+        } else {
+            // Last player killed => all their team should be excluded
+            ArenaTeam arenaTeam = arenaPlayer.getArenaTeam();
+            debug(arenaPlayer, "player LOST - all {} team should be excluded", arenaTeam.getName());
+            this.getTeamLifeMap().remove(arenaTeam);
+
+            InventoryManager.clearInventory(player);
+
+            Optional<ArenaModule> spectateMod = this.arena.getMods().stream()
+                    .filter(mod -> mod.getType() == ModuleType.SPECTATE)
+                    .min(Comparator.comparingInt(ArenaModule::getPriority));
+
+            Consumer<Player> spectateConsumer = (p) -> spectateMod.ifPresentOrElse(
+                    arenaModule -> arenaModule.switchToSpectate(p),
+                    () -> Bukkit.getScheduler().runTaskLater(PVPArena.getInstance(), () -> new PAG_Leave().commit(this.arena, p, new String[0]), 5L)
+            );
+
+            arenaTeam.getTeamMembers().forEach(member -> {
+                if (member.getStatus() == PlayerStatus.DEAD) {
+                    member.setStatus(PlayerStatus.LOST);
+
+                    this.arena.removePlayer(member, this.arena.getConfig().getString(CFG.TP_DEATH), true, false);
+                    spectateConsumer.accept(member.getPlayer());
+
+                    PlayerState.fullReset(this.arena, member.getPlayer());
+                } else {
+                    member.setStatus(PlayerStatus.LOST);
+                }
+            });
+
+            WorkflowManager.handleEnd(this.arena, false);
         }
     }
 
