@@ -9,7 +9,7 @@ public class VersionUtils {
      * @param newVersion latest version available as x.x.x format
      * @return true if current version is up to date, false otherwise
      */
-    public static boolean isSameVersionOrNewer(String currentVersion, String newVersion) {
+    public static boolean isSameVersionOrNewer(String currentVersion, String newVersion, boolean semVer) {
         String[] fullCurrentVerArr = currentVersion.split("-");
         boolean isSnapshot = currentVersion.contains("SNAPSHOT");
         String[] currentVerArr = fullCurrentVerArr[0].split("\\.");
@@ -17,7 +17,7 @@ public class VersionUtils {
         int currentVerVal = 0;
         int newVerVal = 0;
 
-        final int versionLen = currentVerArr.length;
+        final int versionLen = (semVer) ? Math.min(3, currentVerArr.length) : currentVerArr.length;
         for(int i = 0; i < versionLen; i++) {
             int weight = (versionLen - 1 - i) * 2;
             long currentVerChunk = Long.parseLong(currentVerArr[i]);
@@ -31,6 +31,10 @@ public class VersionUtils {
             return !isSnapshot;
         }
         return currentVerVal > newVerVal;
+    }
+
+    public static boolean isSameVersionOrNewer(String currentVersion, String newVersion) {
+        return isSameVersionOrNewer(currentVersion, newVersion, true);
     }
 
     public static String getApiVersion() {

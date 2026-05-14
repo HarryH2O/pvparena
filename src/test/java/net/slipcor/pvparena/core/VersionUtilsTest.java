@@ -34,7 +34,9 @@ public class VersionUtilsTest {
                 Arguments.of("1.10.0", "1.9.99", true),
                 Arguments.of("1.9.99", "1.10.0", false),
                 Arguments.of("2.0.0", "1.99.9", true),
-                Arguments.of("1.99.9", "2.0.0", false)
+                Arguments.of("1.99.9", "2.0.0", false),
+                Arguments.of("26.1.2.build.63-stable", "1.21.2", true),
+                Arguments.of("1.21.2", "26.1.2.build.63-stable", false)
         );
     }
 }

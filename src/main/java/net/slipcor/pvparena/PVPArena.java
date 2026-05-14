@@ -336,7 +336,6 @@ public class PVPArena extends JavaPlugin {
         instance = this;
 
         Metrics metrics = new Metrics(this, BSTATS_PLUGIN_ID);
-        System.out.println("System.getProperty(\"java.version\") = " + System.getProperty("java.version"));
         loadCustomCharts(metrics, this.getDescription().getVersion());
 
         if(Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null){
