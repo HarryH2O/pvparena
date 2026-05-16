@@ -992,7 +992,7 @@ public class Arena {
                 if (arenaPlayer.getStatus() == PlayerStatus.OFFLINE) {
                     // For offline players, just break the link with arena and keep dump to restore inventory afterward
                     arenaPlayer.setArena(null);
-                } else {
+                } else if (arenaPlayer.getArena() != null) {
                     this.callExitEvent(player);
                     this.resetPlayer(arenaPlayer, this.config.getString(CFG.TP_LOSE, OLD), false, force);
                     arenaPlayer.reset();

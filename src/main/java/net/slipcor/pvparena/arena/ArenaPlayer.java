@@ -296,7 +296,7 @@ public class ArenaPlayer {
         double iHealth;
 
         if (healthCfg < 1) {
-            iHealth = this.player.getAttribute(AttributeAdapter.MAX_HEALTH.getValue()).getBaseValue();
+            iHealth = this.player.getAttribute(AttributeAdapter.MAX_HEALTH.getValue()).getValue();
         } else {
             iHealth = healthCfg;
         }

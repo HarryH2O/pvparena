@@ -111,6 +111,8 @@ public final class PlayerState {
         int iHealth = arena.getConfig().getInt(CFG.PLAYER_HEALTH);
 
         AttributeInstance playerMaxHealth = player.getAttribute(AttributeAdapter.MAX_HEALTH.getValue());
+        playerMaxHealth.getModifiers().forEach(playerMaxHealth::removeModifier);
+
         if (iHealth < 1) {
             iHealth = (int) playerMaxHealth.getBaseValue();
         }
@@ -119,8 +121,8 @@ public final class PlayerState {
              playerMaxHealth.setBaseValue(arena.getConfig().getInt(CFG.PLAYER_MAXHEALTH));
         }
 
-        if (iHealth > playerMaxHealth.getBaseValue()) {
-            player.setHealth(playerMaxHealth.getBaseValue());
+        if (iHealth > playerMaxHealth.getValue()) {
+            player.setHealth(playerMaxHealth.getValue());
         } else {
             playersetHealth(player, iHealth);
         }
@@ -180,6 +182,8 @@ public final class PlayerState {
         }
 
         AttributeInstance playerMaxHealth = player.getAttribute(AttributeAdapter.MAX_HEALTH.getValue());
+        playerMaxHealth.getModifiers().forEach(playerMaxHealth::removeModifier);
+
         if (aPlayer.getArena().getConfig().getInt(CFG.PLAYER_MAXHEALTH) > 0) {
             playerMaxHealth.setBaseValue(this.maxhealth);
         }
@@ -187,9 +191,9 @@ public final class PlayerState {
         if (playerMaxHealth.getBaseValue() == this.maxhealth) {
             player.setHealth(Math.min(this.health, this.maxhealth));
         } else {
-            final double newHealth = playerMaxHealth.getBaseValue() * this.health / this.maxhealth;
-            if (newHealth > playerMaxHealth.getBaseValue()) {
-                player.setHealth(playerMaxHealth.getBaseValue());
+            final double newHealth = playerMaxHealth.getValue() * this.health / this.maxhealth;
+            if (newHealth > playerMaxHealth.getValue()) {
+                player.setHealth(playerMaxHealth.getValue());
             } else {
                 player.setHealth(newHealth);
             }
