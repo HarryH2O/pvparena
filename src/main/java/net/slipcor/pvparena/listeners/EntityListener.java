@@ -25,6 +25,7 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Snowball;
+import org.bukkit.entity.TNTPrimed;
 import org.bukkit.entity.Tameable;
 import org.bukkit.entity.Wolf;
 import org.bukkit.event.EventHandler;
@@ -208,6 +209,17 @@ public class EntityListener implements Listener {
             debug("=> {}", eDamager);
         }
 
+        if (eDamager instanceof TNTPrimed tntPrimed) {
+            debug("parsing projectile");
+
+            Entity entitySource = tntPrimed.getSource();
+            if (entitySource instanceof Player tntPrimer) {
+                eDamager = tntPrimer;
+            }
+
+            debug("=> {}", eDamager);
+        }
+
         if (eDamager instanceof Player && ArenaPlayer.fromPlayer(eDamager.getName()).getStatus() == PlayerStatus.LOST) {
             event.setCancelled(true);
             return;
@@ -241,17 +253,18 @@ public class EntityListener implements Listener {
         }
         debug(arena, "onEntityDamageByEntity: fighting player");
 
+        final Player defender = (Player) eDamagee;
+        final ArenaPlayer apDefender = ArenaPlayer.fromPlayer(defender.getName());
+
         if ((!(eDamager instanceof Player))) {
-            // attacker no player => out!
-            if (arena.getConfig().getBoolean(CFG.DAMAGE_FROMOUTSIDERS)) {
-                event.setCancelled(false);
-            }
+            // attacker is not a player => we compute it as an environmental damage
+            handleSimpleDamage(event, apDefender);
             return;
         }
 
         debug(arena, eDamager, "both entities are players");
         final Player attacker = (Player) eDamager;
-        final Player defender = (Player) eDamagee;
+
 
         if (attacker.equals(defender)) {
             // player attacking himself. ignore!
@@ -260,7 +273,6 @@ public class EntityListener implements Listener {
 
         boolean defTeam = false;
         boolean attTeam = false;
-        final ArenaPlayer apDefender = ArenaPlayer.fromPlayer(defender.getName());
         final ArenaPlayer apAttacker = ArenaPlayer.fromPlayer(attacker.getName());
 
         for (ArenaTeam team : arena.getTeams()) {
@@ -384,30 +396,38 @@ public class EntityListener implements Listener {
             return;
         }
 
-        Player defender = (Player) entity;
-        ArenaPlayer apDefender = ArenaPlayer.fromPlayer(defender);
-        Arena arena = apDefender.getArena();
+        ArenaPlayer apDefender = ArenaPlayer.fromPlayer((Player) entity);
 
-        if (arena != null) {
+        if (apDefender.getArena() != null) {
 
             debug("onEntityDamage: cause: {} : {} => {}", event.getCause().name(), entity, entity.getLocation());
 
-            PlayerStatus status = apDefender.getStatus();
-            if (arena.realEndRunner != null || Stream.of(PlayerStatus.FIGHT, PlayerStatus.NULL).noneMatch(status::equals)) {
-                event.setCancelled(true);
-                return;
-            }
-
-            boolean isInNoDamageRegion = arena.getRegions().stream()
-                    .anyMatch(reg -> reg.getFlags().contains(RegionFlag.NODAMAGE) && reg.containsLocation(apDefender.getLocation()));
-
-            if (isInNoDamageRegion) {
-                event.setCancelled(true);
-                return;
-            }
-
-            handleDeathIfNeeded(event, defender, arena);
+            handleSimpleDamage(event, apDefender);
         }
+    }
+
+    /**
+     * Handle an environmental damage or an EDBE that cannot be qualified
+     * @param event The damage event
+     * @param apDefender player getting the damage
+     */
+    private static void handleSimpleDamage(EntityDamageEvent event, ArenaPlayer apDefender) {
+        Arena arena = apDefender.getArena();
+        PlayerStatus status = apDefender.getStatus();
+        if (arena.realEndRunner != null || Stream.of(PlayerStatus.FIGHT, PlayerStatus.NULL).noneMatch(status::equals)) {
+            event.setCancelled(true);
+            return;
+        }
+
+        boolean isInNoDamageRegion = arena.getRegions().stream()
+                .anyMatch(reg -> reg.getFlags().contains(RegionFlag.NODAMAGE) && reg.containsLocation(apDefender.getLocation()));
+
+        if (isInNoDamageRegion) {
+            event.setCancelled(true);
+            return;
+        }
+
+        handleDeathIfNeeded(event, apDefender.getPlayer(), arena);
     }
 
     /**
