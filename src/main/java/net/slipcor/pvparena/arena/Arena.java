@@ -1228,7 +1228,7 @@ public class Arena {
     }
 
     public void removeBlock(final PABlock paBlock) {
-        this.blocks.removeIf(block -> block.getName().equals(paBlock.getName()));
+        this.blocks.remove(paBlock);
     }
 
     public void setSpawns(Set<PASpawn> spawns) {

@@ -4,7 +4,7 @@
 
 ## Description
 
-A medium complex game mode. Dead players are teleported to the killer team's jail. 
+A medium complex game mode. Dead players are teleported to a jail (dedicated to their own team). 
 Other team member of jailed players can liberate them by clicking on a button, giving them one life back.
 
 ## Setup
@@ -16,6 +16,15 @@ that:
 - place a **button** where you want
 - type `/pa <arenaname> button set <teamname>` (to open selection mode)
 - do a left-click on your button
+
+<br>
+
+> 🚩**Important precision**
+> 
+> A jail bound to a team will receive players of this team.  
+> So when they are killed, **blue** players are teleported to **blue** jail. And free **blue** players must click on the
+> **blue** button to free jailed players.  
+> That's implies **blue** jail **should not be near blue** spawn.
 
 ## Config settings
 

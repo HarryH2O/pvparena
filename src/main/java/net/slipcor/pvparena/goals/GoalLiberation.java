@@ -39,12 +39,9 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.util.Vector;
 
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -52,7 +49,6 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 import static java.util.Collections.emptyList;
-import static java.util.Optional.ofNullable;
 import static net.slipcor.pvparena.config.Debugger.debug;
 import static net.slipcor.pvparena.managers.SpawnManager.getPASpawnsStartingWith;
 
@@ -80,7 +76,6 @@ public class GoalLiberation extends ArenaGoal {
 
     private EndRunnable endRunner;
     private String blockTeamName;
-    private final Map<Player, List<ItemStack>> keptItemsMap = new HashMap<>();
 
     @Override
     public String version() {
@@ -141,71 +136,53 @@ public class GoalLiberation extends ArenaGoal {
         if (block == null) {
             return false;
         }
-        debug(this.arena, player, "checking interact");
+        debug(this.arena, player, "checking interact (Liberation)");
 
         if (!block.getType().name().endsWith(BUTTON_SUFFIX)) {
             debug(this.arena, player, "block, but not button");
             return false;
         }
+
         debug(this.arena, player, "button click!");
 
-        final ArenaPlayer arenaPlayer = ArenaPlayer.fromPlayer(player);
+        PABlockLocation clickedLoc  = new PABlockLocation(block.getLocation());
+        ArenaPlayer arenaPlayer = ArenaPlayer.fromPlayer(player);
+        ArenaTeam arenaTeam = arenaPlayer.getArenaTeam();
 
-        final ArenaTeam playerArenaTeam = arenaPlayer.getArenaTeam();
-        if (playerArenaTeam == null) {
+        if (arenaTeam == null) {
+            debug(arenaPlayer, "ArenaTeam is null");
             return false;
         }
 
-        Vector vFlag = null;
-        for (ArenaTeam arenaTeam : this.arena.getNotEmptyTeams()) {
+        boolean isTeamButton = SpawnManager.getBlocksStartingWith(this.arena, BUTTON, arenaTeam.getName())
+                .stream()
+                .anyMatch(btnLoc -> btnLoc.equals(clickedLoc));
 
-            if (arenaTeam.equals(playerArenaTeam)) {
-                debug(this.arena, player, "equals!OUT! ");
-                continue;
-            }
-            debug(this.arena, player, "checking for flag of team " + arenaTeam);
-            Vector vLoc = block.getLocation().toVector();
-            debug(this.arena, player, "block: " + vLoc);
-            if (!SpawnManager.getBlocksStartingWith(this.arena, BUTTON, arenaTeam.getName()).isEmpty()) {
-                vFlag = SpawnManager
-                        .getBlockNearest(
-                                SpawnManager.getBlocksStartingWith(this.arena, BUTTON, arenaTeam.getName()),
-                                new PABlockLocation(player.getLocation()))
-                        .toLocation().toVector();
-            }
-            if (vFlag != null && vLoc.distance(vFlag) < 2) {
-                debug(this.arena, player, "button found!");
-                debug(this.arena, player, "vFlag: " + vFlag);
+        if (isTeamButton) {
 
-                boolean success = false;
+            debug(arenaPlayer, "Button of team {} matched!", arenaTeam.getName());
 
-                for (ArenaPlayer jailedPlayer : playerArenaTeam.getTeamMembers()) {
-                    if (jailedPlayer.getStatus() == PlayerStatus.DEAD) {
-                        SpawnManager.respawn(jailedPlayer, null);
-                        List<ItemStack> keptItems = ofNullable(this.keptItemsMap.remove(jailedPlayer.getPlayer()))
-                                .orElse(emptyList());
-
-                        new InventoryRefillRunnable(this.arena, jailedPlayer.getPlayer(), keptItems);
-                        if (this.arena.getConfig().getBoolean(CFG.GOAL_LIBERATION_JAILED_SCOREBOARD)) {
-                            player.getScoreboard().getObjective("lives").getScore(player.getName()).setScore(0);
-                        }
-                        success = true;
+            boolean success = false;
+            for (ArenaPlayer jailedPlayer : arenaTeam.getTeamMembers()) {
+                if (jailedPlayer.getStatus() == PlayerStatus.DEAD) {
+                    SpawnManager.respawn(jailedPlayer, null);
+                    new InventoryRefillRunnable(this.arena, jailedPlayer.getPlayer(), emptyList());
+                    if (this.arena.getConfig().getBoolean(CFG.GOAL_LIBERATION_JAILED_SCOREBOARD)) {
+                        player.getScoreboard().getObjective("lives").getScore(player.getName()).setScore(0);
                     }
+
+                    success = true;
                 }
-
-                if (success) {
-
-                    this.arena.broadcast(ChatColor.YELLOW + Language
-                            .parse(MSG.GOAL_LIBERATION_LIBERATED,
-                                    playerArenaTeam.getColoredName()
-                                            + ChatColor.YELLOW));
-
-                    final PAGoalJailReleaseEvent gEvent = new PAGoalJailReleaseEvent(this.arena, this, arenaPlayer, playerArenaTeam);
-                    Bukkit.getPluginManager().callEvent(gEvent);
-                }
-
-                return true;
             }
+
+            if (success) {
+                this.arena.broadcast(Language.parse(MSG.GOAL_LIBERATION_LIBERATED, arenaTeam.getColoredName()));
+
+                PAGoalJailReleaseEvent gEvent = new PAGoalJailReleaseEvent(this.arena, this, arenaPlayer, arenaTeam);
+                Bukkit.getPluginManager().callEvent(gEvent);
+            }
+
+            return true;
         }
 
         return false;
@@ -261,7 +238,7 @@ public class GoalLiberation extends ArenaGoal {
                             .filter(block -> teamName.equalsIgnoreCase(block.getTeamName()) && block.getName().equalsIgnoreCase(BUTTON))
                             .findAny();
 
-                    if (!paBlock.isPresent()) {
+                    if (paBlock.isEmpty()) {
                         this.arena.msg(sender, MSG.GOAL_LIBERATION_BTN_NOTFOUND, teamName);
                         return;
                     }
@@ -480,7 +457,6 @@ public class GoalLiberation extends ArenaGoal {
     public void reset(final boolean force) {
         this.endRunner = null;
         this.getTeamLifeMap().clear();
-        this.keptItemsMap.clear();
         if (this.arena.getConfig().getBoolean(CFG.GOAL_LIBERATION_JAILED_SCOREBOARD)) {
             this.arena.getScoreboard().removeCustomEntry(null, 102);
             this.arena.getScoreboard().removeCustomEntry(null, 100);
