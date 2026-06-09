@@ -55,6 +55,16 @@ Hook into many different aspects of the game!
 | [WarmupJoin](mods/warmupjoin.md)               | ???                                                                              | JOIN     | ❌️     |
 | [WorldEdit](mods/worldedit.md)                 | backup/restore regions                                                           |          | ✔️️    |
 
+### Community Modules
+
+The following modules are contributed and maintained by the community. They are not part of the official module pack. Please check compatibility and support before using them.
+
+| Mod                                                                                                                       | Description                                                                           | Type      | Status |
+|---------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------|-----------|--------|
+| [TaczEventCompatible](https://github.com/HarryH2O/TaczEventCompatible/blob/main/doc/mods/taczeventcompatible.md)          | Adds compatibility with Tacz. See documentation for details.                          |           |   ✔️   |
+
+> Community modules are not officially supported. Please test them thoroughly in your environment.
+
 **Key :** ✔️️ Optimized (even rewritten) and fully tested for 2.0 | ❌ Temporarily unavailable
 
 > ℹ **NB:** StandardLounge, StandardSpectate, QuickLounge, BattlefieldJoin and WarmupJoin are bundled in the plugin. Consequently, they're missing from the modules pack.
